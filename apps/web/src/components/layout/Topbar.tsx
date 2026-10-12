@@ -1,14 +1,40 @@
-import { Bell, Building2, Menu, Search, UserCircle } from 'lucide-react'
+import { Bell, Building2, LogOut, Menu, Search, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useAuthStore } from '@/stores/auth-store'
+import { useFacilityStore } from '@/stores/facility-store'
+import { useFacilitiesQuery } from '@/hooks/useFacilities'
+import { useLogoutMutation } from '@/hooks/useAuth'
 
 /**
- * Facility selector, global search, notifications, and user menu are all
- * structural placeholders here — wired to real data starting Phase 2
- * (identity/facility context). They're disabled rather than faked, so
- * nothing here pretends to work before the backend integration exists.
+ * Global search and notifications are still structural placeholders —
+ * there's no backend endpoint for either yet (confirmed: no search or
+ * notification routes in the gateway's route table). Facility selection and
+ * the user menu are real as of Phase 2.
  */
 export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
+  const user = useAuthStore((s) => s.user)
+  const organizationId = useFacilityStore((s) => s.organizationId)
+  const facilityId = useFacilityStore((s) => s.facilityId)
+  const setFacility = useFacilityStore((s) => s.setFacility)
+  const { data: facilities, isLoading: facilitiesLoading } = useFacilitiesQuery(organizationId)
+  const logoutMutation = useLogoutMutation()
+
   return (
     <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4">
       <Button
@@ -22,10 +48,23 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         <Menu />
       </Button>
 
-      <Button type="button" variant="outline" size="sm" disabled className="gap-2">
-        <Building2 className="size-4" aria-hidden="true" />
-        Select facility
-      </Button>
+      <Select value={facilityId ?? undefined} onValueChange={(value) => setFacility(value as string)}>
+        <SelectTrigger
+          size="sm"
+          disabled={!organizationId || facilitiesLoading}
+          aria-label="Select facility"
+        >
+          <Building2 className="size-4" aria-hidden="true" />
+          <SelectValue placeholder={organizationId ? 'Select facility' : 'No organization'} />
+        </SelectTrigger>
+        <SelectContent>
+          {facilities?.map((facility) => (
+            <SelectItem key={facility.id} value={facility.id}>
+              {facility.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       <div className="relative ml-2 hidden max-w-sm flex-1 md:block">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -43,9 +82,34 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         <Button type="button" variant="ghost" size="icon" disabled aria-label="Notifications">
           <Bell />
         </Button>
-        <Button type="button" variant="ghost" size="icon" disabled aria-label="User menu">
-          <UserCircle />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button type="button" variant="ghost" size="icon" aria-label="User menu">
+                <UserCircle />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">{user?.email ?? 'Signed in'}</span>
+                {user?.memberships[0] ? (
+                  <span className="text-xs text-muted-foreground">{user.memberships[0].role}</span>
+                ) : null}
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={logoutMutation.isPending}
+              onClick={() => logoutMutation.mutate()}
+            >
+              <LogOut />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   )

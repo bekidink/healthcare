@@ -1,5 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { CalendarClock, ListOrdered, Receipt, Users } from 'lucide-react'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { CalendarClock, ListOrdered, Receipt, UserPlus, Users } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useAuthStore } from '@/stores/auth-store'
+import { useFacilityStore } from '@/stores/facility-store'
+import { useFacilityQuery } from '@/hooks/useFacilities'
 
 export const Route = createFileRoute('/_app/')({
   component: DashboardPage,
@@ -19,14 +23,28 @@ const SUMMARY_CARDS = [
 ] as const
 
 function DashboardPage() {
+  const user = useAuthStore((s) => s.user)
+  const facilityId = useFacilityStore((s) => s.facilityId)
+  const { data: facility } = useFacilityQuery(facilityId)
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Facility-wide overview. Real metrics arrive once identity and facility-context integration (Phase 2) and
-          the first clinical workflow (Phase 3) are wired in.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            {user?.email ? `Signed in as ${user.email}` : 'Facility-wide overview'}
+            {facility ? ` · ${facility.name}` : ''}
+          </p>
+        </div>
+        <Button
+          render={
+            <Link to="/patients" className="gap-2">
+              <UserPlus className="size-4" aria-hidden="true" />
+              Register or find a patient
+            </Link>
+          }
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
